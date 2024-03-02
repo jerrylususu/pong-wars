@@ -1,82 +1,82 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Pong wars | Koen van Gilst</title>
-    <meta
-      name="description"
-      content="The eternal battle between day and night, good and bad. Written in JavaScript with some HTML & CSS in one index.html. Feel free to reuse the code and create your own version."
-    />
-    <link rel="canonical" href="https://pong-wars.koenvangilst.nl/" />
-    <link rel="author" href="https://koenvangilst.nl" />
-    <meta name="theme-color" content="#172B36" />
-    <meta name="creator" content="Koen van Gilst" />
-    <style>
-      html {
-        height: 100%;
-      }
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pong wars | Koen van Gilst</title>
+  <meta
+    name="description"
+    content="The eternal battle between day and night, good and bad. Written in JavaScript with some HTML & CSS in one index.html. Feel free to reuse the code and create your own version."
+  />
+  <link rel="canonical" href="https://pong-wars.koenvangilst.nl/" />
+  <link rel="author" href="https://koenvangilst.nl" />
+  <meta name="theme-color" content="#172B36" />
+  <meta name="creator" content="Koen van Gilst" />
+  <style>
+    html {
+      height: 100%;
+    }
 
-      body {
-        height: 100%;
-        margin: 0;
-        padding: 0;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        background: linear-gradient(to bottom, #172b36 0%, #d9e8e3 100%);
-      }
+    body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: linear-gradient(to bottom, #172b36 0%, #d9e8e3 100%);
+    }
 
-      #container {
-        display: flex;
-        align-items: center;
-        flex-direction: column;
-        width: min(70vh, 80%);
-        max-width: 600px;
-        height: 100%;
-      }
+    #container {
+      display: flex;
+      align-items: center;
+      flex-direction: column;
+      width: min(70vh, 80%);
+      max-width: 600px;
+      height: 100%;
+    }
 
-      canvas {
-        display: block;
-        border-radius: 4px;
-        overflow: hidden;
-        width: 100%;
-        margin-top: auto;
-        box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
-      }
+    canvas {
+      display: block;
+      border-radius: 4px;
+      overflow: hidden;
+      width: 100%;
+      margin-top: auto;
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+    }
 
-      #score {
-        font-family: monospace;
-        margin-top: 30px;
-        font-size: 16px;
-        padding-left: 20px;
-        color: #172b36;
-      }
+    #score {
+      font-family: monospace;
+      margin-top: 30px;
+      font-size: 16px;
+      padding-left: 20px;
+      color: #172b36;
+    }
 
-      #made {
-        text-align: center;
-        line-height: 1.5;
-        font-family: monospace;
-        margin-top: auto;
-        margin-bottom: 20px;
-        font-size: 10px;
-      }
+    #made {
+      text-align: center;
+      line-height: 1.5;
+      font-family: monospace;
+      margin-top: auto;
+      margin-bottom: 20px;
+      font-size: 10px;
+    }
 
-      #made a {
-        color: #172b36;
-      }
-    </style>
-  </head>
+    #made a {
+      color: #172b36;
+    }
+  </style>
+</head>
 
-  <body>
-    <div id="container">
-      <canvas id="pongCanvas" width="600" height="600"></canvas>
-      <div id="score"></div>
-      <p id="made">
-        made by <a href="https://koenvangilst.nl">Koen van Gilst</a> | source on
-        <a href="https://github.com/vnglst/pong-wars">github</a>
-      </p>
-    </div>
-  </body>
+<body>
+  <div id="container">
+    <canvas id="pongCanvas" width="600" height="600"></canvas>
+    <div id="score"></div>
+    <canvas id="statCanvas" width="600" height="100"></canvas>
+    <p id="made">
+      made by <a href="https://koenvangilst.nl">Koen van Gilst</a> | source on
+      <a href="https://github.com/vnglst/pong-wars">github</a>
+    </p>
+  </div>
 
   <script>
     // Source palette: https://twitter.com/AlexCristache/status/1738610343499157872
@@ -93,6 +93,10 @@
 
     const canvas = document.getElementById("pongCanvas");
     const ctx = canvas.getContext("2d");
+
+    const statCanvas = document.getElementById("statCanvas");
+    const statCtx = statCanvas.getContext("2d");
+
     const scoreElement = document.getElementById("score");
 
     const DAY_COLOR = colorPalette.MysticMint;
@@ -102,12 +106,14 @@
     const SQUARE_SIZE = 25;
     const MIN_SPEED = 5;
     const MAX_SPEED = 10;
+    const STAT_WINDOW = 300;
 
     const numSquaresX = canvas.width / SQUARE_SIZE;
     const numSquaresY = canvas.height / SQUARE_SIZE;
 
     let dayScore = 0;
     let nightScore = 0;
+    let scoreHistory = [];
 
     const squares = [];
 
@@ -138,7 +144,12 @@
       },
     ];
 
-    let iteration = 0;
+    setInterval(() => {
+      scoreHistory.push({ dayScore, nightScore });
+      if (scoreHistory.length > STAT_WINDOW) {
+        scoreHistory.shift(); // Remove the oldest score
+      }
+    }, 500);
 
     function drawBall(ball) {
       ctx.beginPath();
@@ -167,6 +178,33 @@
           if (squares[i][j] === NIGHT_COLOR) nightScore++;
         }
       }
+    }
+
+    function drawGraph() {
+      const graphWidth = statCanvas.width;
+      const graphHeight = 100; // Set the height of the graph
+      const startX = 0;
+      const startY = 0; // Position the graph at the bottom of the canvas
+
+      // Draw background for the graph
+      statCtx.clearRect(startX, startY, graphWidth, graphHeight);
+      // Calculate the maximum score to scale the graph
+      const maxScore = Math.max(...scoreHistory.map(s => Math.max(s.dayScore, s.nightScore)), 1);
+      
+      // Plot the scores
+      scoreHistory.forEach((score, index) => {
+        const x = startX + (index / STAT_WINDOW) * graphWidth;
+        const dayY = startY + (1 - score.dayScore / maxScore) * graphHeight;
+        const nightY = startY + (1 - score.nightScore / maxScore) * graphHeight;
+
+        // Draw day score
+        statCtx.fillStyle = DAY_COLOR;
+        statCtx.fillRect(x - 1, dayY, 2, 2); // Plot a small square for each point
+
+        // Draw night score
+        statCtx.fillStyle = NIGHT_COLOR;
+        statCtx.fillRect(x - 1, nightY, 2, 2); // Plot a small square for each point
+      });
     }
 
     function checkSquareCollision(ball) {
@@ -210,8 +248,8 @@
     }
 
     function addRandomness(ball) {
-      ball.dx += Math.random() * 0.01 - 0.005;
-      ball.dy += Math.random() * 0.01 - 0.005;
+      ball.dx += Math.random() * 0.015 - 0.005;
+      ball.dy += Math.random() * 0.015 - 0.005;
 
       // Limit the speed of the ball
       ball.dx = Math.min(Math.max(ball.dx, -MAX_SPEED), MAX_SPEED);
@@ -227,8 +265,11 @@
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       drawSquares();
+      drawGraph(); // Draw the graph
 
-      scoreElement.textContent = `day ${dayScore} | night ${nightScore}`;
+      const dayPercentage = ((dayScore / (dayScore + nightScore)) * 100).toFixed(2);
+      const nightPercentage = ((nightScore / (dayScore + nightScore)) * 100).toFixed(2);
+      scoreElement.textContent = `day ${dayScore} (${dayPercentage}%) | night ${nightScore} (${nightPercentage}%)`;
 
       balls.forEach((ball) => {
         drawBall(ball);
@@ -240,12 +281,10 @@
         addRandomness(ball);
       });
 
-      iteration++;
-      if (iteration % 1_000 === 0) console.log("iteration", iteration);
-
       requestAnimationFrame(draw);
     }
 
     requestAnimationFrame(draw);
   </script>
+</body>
 </html>
